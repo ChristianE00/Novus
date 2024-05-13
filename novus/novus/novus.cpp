@@ -22,9 +22,14 @@ const int TAB_SIZE = 2;
 int prevX = 0;
 int prevY = 0;
 
+int upCount = 0;
+
 // Cursor position
 int cursorLine = 0;
+
 int cursorPos = 0;
+
+int windowSize;
 
 // Scroll position
 int scrollPos = 0;
@@ -47,21 +52,18 @@ bool commandLineMode = false;
 bool commandInputMode = false;
 
 
-// Function to set the cursor position
-void setCursorPos(int line, int pos) {
-    // Set the cursor position
-    COORD cursorPo;
-    cursorPo.X = pos;
-    cursorPo.Y = line;
-    SetConsoleCursorPosition(hConsole, cursorPo);
-}
 
-// Clear the screen
+
 void clearScreen() {
 #ifdef _WIN32
-    system("cls");
+    DWORD count;
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hConsole, &csbi);
+    FillConsoleOutputCharacter(hConsole, ' ', csbi.dwSize.X * csbi.dwSize.Y, csbi.dwCursorPosition, &count);
+    SetConsoleCursorPosition(hConsole, csbi.dwCursorPosition);
 #else
-    system("clear");
+    std::cout << "\x1B[2J\x1B[H"; // Clear screen and move cursor to top-left
 #endif
 }
 
@@ -70,6 +72,15 @@ COORD getWindowSize() {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(hConsole, &csbi);
     return csbi.dwSize;
+}
+
+COORD cursorPoo;
+// Function to set the cursor position
+void setCursorPos(int line, int pos) {
+    // Set the cursor position
+    cursorPoo.X = pos;
+    cursorPoo.Y = line;
+    SetConsoleCursorPosition(hConsole, cursorPoo);
 }
 
 // Function to display the node
@@ -86,10 +97,12 @@ void displayMode() {
     else {
         std::cout << "NORMAL MODE";
     }
-	setCursorPos(cursorLine - scrollPos, cursorPos);
+    setCursorPos(cursorLine - scrollPos, cursorPos);
 }
 
-// Redraw the screen
+
+
+
 void redrawScreen() {
     // Clear the screen
     clearScreen();
@@ -98,29 +111,36 @@ void redrawScreen() {
     COORD windowSize = getWindowSize();
 
     // Redisplay the text
-    for (int i = scrollPos; i < scrollPos + windowSize.Y && i < lines.size(); i++) {
+    for (int i = scrollPos; i < scrollPos + windowSize.Y - 1 && i < lines.size(); i++) {
         std::cout << lines[i] << std::endl;
     }
-    //displayMode();
 
     // Set the cursor position
-    setCursorPos(cursorLine - scrollPos, cursorPos);
+    setCursorPos(std::abs(cursorLine - scrollPos), cursorPos);
 }
 
+void redrawScreenUp() {
+    // Check if there are more lines above to scroll
+    for (int i = cursorPos; i < cursorPos + windowSize - 1 && i < lines.size() && i >= 0; i++) {
+		std::cout << lines[i] << std::endl;
+    }
+    setCursorPos(0, cursorPos);
+
+}
+
+
+
+
 int main(int argc, char* argv[]) {
-
-    // For testing Log file
-    /*
-    std::ofstream logFile("log.txt");
-    logFile << "Main started" << std::endl;
-    */
-
     if (argc != 2) {
         std::cerr << "Usage: textEditor <filename>" << std::endl;
         return 1;
     }
+    windowSize = getWindowSize().Y;
 
+    std::ofstream debugFile("debug.txt");
 
+    // Now you can write to debugFile instead of std::cout for debug 
 
     std::string filename = argv[1];
     std::ifstream file(filename);
@@ -140,7 +160,7 @@ int main(int argc, char* argv[]) {
 
     // Display the text
     redrawScreen();
-	displayMode(); // Display the mode box
+    displayMode(); // Display the mode box
 
     // Simple editing loop
     while (true) {
@@ -149,7 +169,7 @@ int main(int argc, char* argv[]) {
             char c = _getch();
             if (c == 27) { // ESC key
                 insertMode = false;
-				displayMode(); // update the mode box
+                displayMode(); // update the mode box
             }
             else if (c == 8) { // Backspace
                 if (cursorPos > 0) {
@@ -162,14 +182,15 @@ int main(int argc, char* argv[]) {
                 std::string newLine = lines[cursorLine + scrollPos].substr(cursorPos);
                 lines[cursorLine + scrollPos].erase(cursorPos);
                 cursorLine++;
+                cursorLine++;
                 lines.insert(lines.begin() + cursorLine + scrollPos, newLine);
                 cursorPos = 0;
                 redrawScreen();
             }
             else if (c == 9) { // Tab key
-				lines[cursorLine + scrollPos].insert(cursorPos, TAB_SIZE, ' ');
-				cursorPos += TAB_SIZE;
-				redrawScreen();
+                lines[cursorLine + scrollPos].insert(cursorPos, TAB_SIZE, ' ');
+                cursorPos += TAB_SIZE;
+                redrawScreen();
             }
             else {
                 lines[cursorLine + scrollPos].insert(cursorPos, 1, c);
@@ -180,75 +201,76 @@ int main(int argc, char* argv[]) {
         // Command line mode
         else if (commandLineMode) {
             char c = _getch();
-            
+
             if (c == '\r') { // Enter key
-              // Execute the command
-              if (boxCommand == "wq"){
-                // Save the file
-                std::ofstream file(filename);
-                for (const auto& line : lines) {
-                  file << line << "\n";
+                // Execute the command
+                if (boxCommand == "wq") {
+                    // Save the file
+                    std::ofstream file(filename);
+                    for (const auto& line : lines) {
+                        file << line << "\n";
+                    }
+                    file.close();
+                    // Exit the Program
+                    clearScreen();
+                    return 0;
                 }
-                file.close();
-                // Exit the Program
-                clearScreen();
-                return 0;
-              }
 
-              // Just save the file
-              else if (boxCommand == "w") {
-				  // Save the file
-				  std::ofstream file(filename);
-				  for (const auto& line : lines) {
-					  file << line << "\n";
-				  }
-				  file.close();
-				  // Switch back to command node
-				  commandLineMode = false;
+                // Just save the file
+                else if (boxCommand == "w") {
+                    // Save the file
+                    std::ofstream file(filename);
+                    for (const auto& line : lines) {
+                        file << line << "\n";
+                    }
+                    file.close();
+                    // Switch back to command node
+                    commandLineMode = false;
 
-                  displayMode(); // update the mode box
-				  redrawScreen();
-              }
+                    displayMode(); // update the mode box
+                    redrawScreen();
+                }
 
-              // Exit without saving
-              else if (boxCommand ==  "q"){
-                clearScreen();
-                return 0;
-              }
-              // Switch back to command node
-              commandLineMode = false;
-              insertMode = false;
+                // Exit without saving
+                else if (boxCommand == "q") {
+                    clearScreen();
+                    debugFile.close();
+                    return 0;
+                }
+                // Switch back to command node
+                commandLineMode = false;
+                insertMode = false;
 
-              displayMode(); // update the mode box
-              redrawScreen();
+                displayMode(); // update the mode box
+                redrawScreen();
             }
 
             else if (c == 27) { // ESC key
                 insertMode = false;
                 // Close the command box and reset cursor to its previous position
-				setCursorPos(cursorLine - scrollPos, cursorPos);
-				commandLineMode = false;
+                setCursorPos(cursorLine - scrollPos, cursorPos);
+                commandLineMode = false;
                 boxCommand = "";
-				redrawScreen();
-                
-          displayMode(); 
+                redrawScreen();
+
+                displayMode();
             }
             else {
-               // Backspace
+                // Backspace
                 if (c == 8) {
-					// Remove the last character from the command
-					if (boxCommand.size() > 0) {
-						boxCommand.pop_back();
-						// Move the cursor back
-						setCursorPos(getWindowSize().Y - 1, 0);
-						// Clear the line
-						std::cout << "          ";
-						// Move the cursor back
-						setCursorPos(getWindowSize().Y - 1, 0);
-						// Display the command
-						std::cout << ":" << boxCommand;
-					}
-                
+                    // Remove the last character from the command
+                    if (boxCommand.size() > 0) {
+                        boxCommand.pop_back();
+                        // Move the cursor back
+                        setCursorPos(getWindowSize().Y - 1, 0);
+                        // Clear the line
+                        std::cout << "          ";
+                        // Move the cursor back
+                        setCursorPos(getWindowSize().Y - 1, 0);
+                        // Display the command
+                        std::cout << ":" << boxCommand;
+                    }
+
                 }
                 else {
                     // Add the types character to the command
@@ -264,16 +286,16 @@ int main(int argc, char* argv[]) {
             char command = _getch();
             switch (command) {
             case ':': {
-				// Enter command mode
-				commandLineMode = true;
+                // Enter command mode
+                commandLineMode = true;
                 insertMode = false;
-            displayMode(); // update the mode box
+                displayMode(); // update the mode box
                 boxCommand = "";
 
                 // Display the command prompt
                 setCursorPos(getWindowSize().Y - 1, 0);
                 std::cout << ":";
-				break;
+                break;
             }
             case 'i':
                 insertMode = true;
@@ -288,48 +310,72 @@ int main(int argc, char* argv[]) {
             case 'l':
                 if (cursorPos < lines[cursorLine + scrollPos].size()) {
                     cursorPos++;
+                    redrawScreen();
                     setCursorPos(cursorLine - scrollPos, cursorPos);
                 }
                 break;
             case 'h':
                 if (cursorPos > 0) {
                     cursorPos--;
-                    setCursorPos(cursorLine - scrollPos, cursorPos);
+                    redrawScreen();
+                    //setCursorPos(cursorLine - scrollPos, cursorPos);
                 }
                 break;
+            // In the 'j' case:
             case 'j':
-                if (cursorLine + scrollPos < lines.size() - 1) {
+                if (cursorLine < lines.size() - 1) {
                     cursorLine++;
-                    if (cursorLine >= getWindowSize().Y - 1) {
-                        scrollPos = (scrollPos + 1 < static_cast<int>(lines.size()) - getWindowSize().Y + 1) ? scrollPos + 1 : static_cast<int>(lines.size()) - getWindowSize().Y + 1;
+                    if (cursorLine >= windowSize - 1) {
+                        //cursorLine--;
+                        scrollPos++;
                         redrawScreen();
                     }
                     else {
                         setCursorPos(cursorLine - scrollPos, cursorPos);
                     }
+                }
+                break;
+                // cursorLine -> total count
+                // 
+                // In the 'k' case:
+            case 'k':
+               // debugFile << "CursorLine: " << cursorLine << " scrollPos: " << scrollPos << std::endl;
+                if (cursorLine > 0) {
+                    upCount++;
+					cursorLine--;
+					if (upCount == windowSize - 1) {
+						redrawScreenUp();
+						upCount = 0;
+					}
+                }
+                else if (scrollPos == 0) {
+                    cursorLine--;
+                    setCursorPos(cursorLine, cursorPos);
                 }
                 else {
-                    // If we're at the end of the file, set cursorLine and scrollPos to their maximum values
-                    cursorLine = lines.size() - 1;
-                    scrollPos = (0 < static_cast<int>(lines.size()) - getWindowSize().Y + 1) ? static_cast<int>(lines.size()) - getWindowSize().Y + 1 : 0;
-                    redrawScreen();
+                    cursorLine--;
+
                 }
                 break;
-
-            case 'k':
+                /*
+                if(cursorLine - scrollPos == windowSize - 1) {
+                  
+                }
                 if (cursorLine > 0) {
                     cursorLine--;
-                    if (cursorLine < scrollPos) {
-                        scrollPos = (scrollPos - 1 > 0) ? scrollPos - 1 : 0;
-                        redrawScreen();
-                    }
-                    else {
-                        setCursorPos(cursorLine - scrollPos, cursorPos);
-                    }
+                    setCursorPos(cursorLine - scrollPos, cursorPos);
+                }
+                else if (scrollPos > 0) {
+                    redrawScreenUp();
                 }
                 break;
+                */
+
+
+
             case 'q':
                 goto end_of_loop;
+                
             }
         }
     }
