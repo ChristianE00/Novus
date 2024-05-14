@@ -41,6 +41,8 @@ g++ -std=c++11 -o novus novus.cpp -lwindows
 
 This command compiles the novus.cpp file with C++11 support, links against the Windows library, and outputs an executable named novus.
 
+_Created on 5/13/24_
+
 ***Please note that this is a basic text editor and does not support advanced features like syntax highlighting or auto-completion. It's intended for simple text editing tasks in a terminal environment.***
 
 
