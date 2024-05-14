@@ -108,28 +108,29 @@ void moveCursor(int dx, int dy) {
     visualCursorY += dy;
 
     // Handle line wrapping
-    if (visualCursorX < 0) {
+    while (visualCursorX < 0) {
         if (visualCursorY > 0) {
             visualCursorY--;
-            visualCursorX = (lines[cursorY].length() / windowWidth) * windowWidth + lines[cursorY].length() % windowWidth;
+            visualCursorX = lines[visualCursorY].length() % windowWidth;
         }
         else {
             visualCursorX = 0;
+            break;
         }
     }
-    else if (visualCursorY >= 0 && visualCursorY < lines.size() && visualCursorX >(lines[cursorY].length() / windowWidth) * windowWidth + lines[cursorY].length() % windowWidth) {
-        if (visualCursorY < lines.size() - 1) {
-            visualCursorY++;
-            visualCursorX = 0;
-        }
-        else {
-            visualCursorX = (lines[cursorY].length() / windowWidth) * windowWidth + lines[cursorY].length() % windowWidth;
+    while (visualCursorY < lines.size() && visualCursorX > lines[visualCursorY].length() % windowWidth) {
+        visualCursorX -= windowWidth;
+        visualCursorY++;
+        if (visualCursorY >= lines.size()) {
+            visualCursorX = lines[visualCursorY - 1].length() % windowWidth;
+            visualCursorY = lines.size() - 1;
+            break;
         }
     }
 
-    // Update logical cursor position based on visual position and line wrapping
-    cursorX = visualCursorX % windowWidth;
-    cursorY = visualCursorY + (visualCursorX / windowWidth);
+    // Update logical cursor position based on visual position
+    cursorX = visualCursorX + (visualCursorY - cursorY) * windowWidth;
+    cursorY = visualCursorY;
 
     // Adjust scroll position if necessary
     int windowHeight = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
@@ -146,6 +147,7 @@ void moveCursor(int dx, int dy) {
         SetConsoleCursorPosition(hConsole, { (SHORT)visualCursorX, (SHORT)(visualCursorY - scrollY) });
     }
 }
+
 
 
 void insertCharacter(char ch) {
@@ -171,11 +173,9 @@ void deleteCharacter() {
     }
 }
 
-// Add this function to save the file
 void saveFile(const std::string& filename) {
     std::ofstream file(filename);
     if (!file.is_open()) {
-        // std::cerr << "Error opening file for writing: " << filename << "\n";
         return;
     }
 
@@ -184,7 +184,6 @@ void saveFile(const std::string& filename) {
     }
 
     file.close();
-    //std::cout << "File saved: " << filename << "\n";
 }
 
 void executeCommand(const std::string& command) {
@@ -200,7 +199,6 @@ void executeCommand(const std::string& command) {
         clearScreen();
         exit(0);
     }
-    // Add more command handling as needed
 }
 
 void enterCommandMode() {
