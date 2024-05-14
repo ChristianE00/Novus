@@ -299,6 +299,13 @@ int main(int argc, char* argv[]) {
             }
             else if (ch == 'I') { // Move to the beginning of the line
                 cursorX = 0;
+                visualCursorX = 0;
+                currentMode = Mode::Insert;
+                displayMode();
+            }
+            else if (ch == 'A') { // Move to the end of the line line
+                cursorX = lines[cursorY].size();
+				visualCursorX = cursorX;
                 currentMode = Mode::Insert;
                 displayMode();
             }
