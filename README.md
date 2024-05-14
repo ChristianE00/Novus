@@ -2,6 +2,9 @@
 
 Novus is a simple, terminal-based text editor for Windows. It's designed to be lightweight and easy to use, making it perfect for quick edits to text files and simple programming tasks. Novus is written in C++ and uses the Windows API for console manipulation.
 
+![novus](https://github.com/ChristianE00/Novus/assets/112213868/32551673-bef7-4179-9eb5-13db0e3676c7)
+
+
 ## How to Use
 
 To open a file with Novus, navigate to the directory containing the **novus.exe** executable in your terminal, then run the following command:
