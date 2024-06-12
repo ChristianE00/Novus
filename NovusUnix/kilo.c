@@ -17,10 +17,12 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 enum editorKey {
-  ARROW_LEFT = 'a',
-  ARROW_RIGHT = 'd',
-  ARROW_UP = 'w',
-  ARROW_DOWN = 's'
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT,
+  ARROW_UP,
+  ARROW_DOWN,
+  PAGE_UP,
+  PAGE_DOWN
 };
 
 /*** data ***/
@@ -91,7 +93,7 @@ void enableRawMode() {
   if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr");
 }
 
-char editorReadKey() {
+int editorReadKey() {
   int nread;
   char c;
   while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
@@ -105,6 +107,14 @@ char editorReadKey() {
     if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
 
     if (seq[0] == '[') {
+      if (seq[1] >= '0' && seq[1] <= '9') {
+        if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+        if (seq[2] == '~') {
+          case '5': return PAGE_UP;
+          case '6': return PAGE_DOWN;
+        }
+      }
+    } else {
       switch (seq[1]) {
         case 'A': return ARROW_UP;
         case 'B': return ARROW_DOWN;
@@ -112,6 +122,7 @@ char editorReadKey() {
         case 'D': return ARROW_LEFT;
       }
     }
+ }
 
     return '\x1b';
   } else {
@@ -242,25 +253,33 @@ void editorRefreshScreen() {
 
 /** input ***/
 
-void editorMoveCursor(char key) {
+void editorMoveCursor(int key) {
   switch (key) {
     case ARROW_LEFT:
-      E.cx--;
+      if (E.cx != 0) {
+        E.cx--;
+      }
       break;
     case ARROW_RIGHT:
-      E.cx++;
+      if (E.cx != E.screencols - 1) {
+        E.cx++;
+      }
       break;
     case ARROW_UP:
-      E.cy--;
+      if (E.cy != 0) {
+        E.cy--;
+      }
       break;
     case ARROW_DOWN:
-      E.cy++;
+      if (E.cy != E.screenrows - 1) {
+        E.cy++;
+      }
       break;
   }
 }
 
 void editorProcessKeypress() {
-  char c = editorReadKey();
+  int c = editorReadKey();
 
   switch (c) {
     case CTRL_KEY('q'):
