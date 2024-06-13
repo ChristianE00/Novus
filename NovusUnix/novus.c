@@ -10,7 +10,7 @@
 
 /*** defines ***/
 
-#define KILO_VERSION "0.0.1"
+#define NOVUS_VERSION "0.0.1"
 
 // It sets the upper 3 bits of the character to 0 (which is what the CTRL key does)
 // 00011111 (bitwise and)
